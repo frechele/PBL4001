@@ -13,8 +13,17 @@ if __name__ == '__main__':
             for line in f.readlines():
                 inst_set.add(line.lower().strip())
 
+    inst_set = list(inst_set)
+
+    inst2ind = dict()
+    ind2inst = dict()
+
+    for idx, inst in enumerate(inst_set):
+        inst2ind[inst] = idx
+        ind2inst[idx] = inst
+
     with open('instruction_set.pkl', 'wb') as f:
-        pickle.dump(inst_set, f)
-
-    print(inst_set)
-
+        pickle.dump({
+            'inst2ind': inst2ind,
+            'ind2inst': ind2inst
+        }, f)
