@@ -59,8 +59,8 @@ def convert_one(filename: str):
                 bbs.append(bb)
                 bb = []
 
-    if len(bbs) == 0:
-        return # just skip null file
+    if len(bbs) <= 100:
+        return # just skip null or wrong file
 
     with open(os.path.join('data/pkl/{}.pkl'.format(basename)), 'wb') as f:
         data = {
@@ -72,10 +72,12 @@ def convert_one(filename: str):
 
 
 def task(rank: int, file_list):
-    if rank == 0:
-        file_list = tqdm(file_list)
+    total_size = len(file_list)
 
-    for file in file_list:
+    for idx, file in enumerate(file_list):
+        if rank == 0:
+            print('{}/{} {}'.format(idx, total_size, file), flush=True)
+
         convert_one(file)
 
 
