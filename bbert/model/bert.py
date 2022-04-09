@@ -27,14 +27,14 @@ class PositionalEncoding(nn.Module):
 
 
 class BERTEmbedding(nn.Module):
-    def __init__(self, vmap: Vocabulary, dropout: float=0.1):
+    def __init__(self, vmap: Vocabulary, embed_size: int, dropout: float=0.1):
         super(BERTEmbedding, self).__init__()
 
-        self.token = nn.Embedding(num_embeddings=vmap.size, embedding_dim=128, padding_idx=vmap.get_index('[PAD]'))
-        self.position = PositionalEncoding(self.token.embedding_dim)
+        self.token = nn.Embedding(num_embeddings=vmap.size, embedding_dim=embed_size, padding_idx=vmap.get_index('[PAD]'))
+        self.position = PositionalEncoding(embed_size)
 
         self.dropout = nn.Dropout(p=dropout)
-        self.embed_size = self.token.embedding_dim
+        self.embed_size = embed_size
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         x = self.token(x) + self.position(x)
@@ -111,11 +111,11 @@ class MultiHeadAttention(nn.Module):
 
         self.dropout = nn.Dropout(p=dropout)
 
-    def forward(self, q: torch.Tensor, k: torch.Tensor, v: torch.Tensor, mask: torch.Tensor) -> torch.Tensor:
+    def forward(self, query: torch.Tensor, key: torch.Tensor, value: torch.Tensor, mask: torch.Tensor) -> torch.Tensor:
         batch_size = query.size(0)
 
         query, key, value = [l(x).view(batch_size, -1, self.h, self.d_k).transpose(1, 2)
-                             for l, x in zip(self.linear_layers, (q, k, v))]
+                             for l, x in zip(self.linear_layers, (query, key, value))]
 
         x, attn = self.attention(query, key, value, mask=mask, dropout=self.dropout)
 
@@ -128,7 +128,7 @@ class TransformerBlock(nn.Module):
     def __init__(self, hidden: int, attn_heads: int, feed_forward_hidden: int, dropout: float):
         super(TransformerBlock, self).__init__()
 
-        self.attention = MultiHeadAttention(h=attn_heads, d_model=hidden)
+        self.attention = MultiHeadAttention(h=attn_heads, d_model=hidden, dropout=dropout)
         self.feed_forward = PositionwiseFeedForward(d_model=hidden, d_ff=feed_forward_hidden, dropout=dropout)
         self.input_sublayer = SublayerConnection(size=hidden, dropout=dropout)
         self.output_sublayer = SublayerConnection(size=hidden, dropout=dropout)
@@ -149,7 +149,7 @@ class BERT(nn.Module):
 
         self.pad_id = vmap.get_index('[PAD]')
 
-        self.embedding = BERTEmbedding(vmap)
+        self.embedding = BERTEmbedding(vmap, embed_size=hidden)
         self.transformer_blocks = nn.ModuleList([
             TransformerBlock(hidden, attn_heads, hidden * 4, dropout)
             for _ in range(n_layers)
