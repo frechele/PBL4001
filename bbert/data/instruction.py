@@ -27,7 +27,7 @@ class Vocabulary:
         self.ind2inst = copy.deepcopy(imap.ind2inst)
 
         sep_idx = len(self.inst2ind)
-        for i, tok in enumerate(['[SEP]', '[CLS]', '[PAD]', '[MASK]'], sep_idx):
+        for i, tok in enumerate(['[SEP]', '[CLS]', '[MASK]', '[PAD]'], sep_idx):
             self.inst2ind[tok] = i
             self.ind2inst[i] = tok    
 
