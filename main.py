@@ -15,7 +15,7 @@ if __name__ == '__main__':
     wandb_logger = WandbLogger(project='bbert', log_model='all')
     wandb_logger.watch(model)
 
-    trainer = pl.Trainer(gpus=1, precision=16, callbacks=[model_callback], max_epochs=10, logger=wandb_logger)
+    trainer = pl.Trainer(gpus=1, precision=32, callbacks=[model_callback], max_epochs=10, logger=wandb_logger)
     trainer.fit(model)
 
     wandb.finish()
