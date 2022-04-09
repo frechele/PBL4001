@@ -38,7 +38,13 @@ JUMP_INSTS = {
     'jnp',
     'jpo',
     'jcxz',
-    'jecxz'
+    'jecxz',
+    'call',
+    'ret',
+    'retf',
+    'retfw',
+    'retn',
+    'retnw'
 }
 
 def convert_one(filename: str):
