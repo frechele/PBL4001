@@ -89,7 +89,7 @@ if __name__ == '__main__':
     procs = []
     length = int(np.ceil(len(file_list) / NUM_PROCS))
     for rank in range(NUM_PROCS):
-        list_per_worker = copy.deepcopy(file_list[rank + length:(rank + 1) * length])
+        list_per_worker = copy.deepcopy(file_list[rank * length:(rank + 1) * length])
         proc = mp.Process(target=task, args=(rank, list_per_worker))
         procs.append(proc)
         proc.start()
