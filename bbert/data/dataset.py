@@ -5,7 +5,7 @@ import pickle
 import torch
 from torch.utils.data import Dataset
 
-from bbert.data.instruction import InstructionMapping
+from bbert.data.instruction import InstructionMapping, Vocabulary
 
 
 class MalwareDataset(Dataset):
@@ -30,9 +30,74 @@ class MalwareDataset(Dataset):
         return bbs, torch.LongTensor(file_type)
 
 
+class BBERTDataset(Dataset):
+    def __init__(self, root_path: str, vmap: Vocabulary, seq_len: int=64, mask_frac: float=0.15, random_pick: bool=False):
+        super(BBERTDataset, self).__init__()
+
+        self.vmap = vmap
+
+        self.seq_len = seq_len
+        self.mask_frac = mask_frac
+
+        self.sep_id = vmap.get_index('[SEP]')
+        self.cls_id = vmap.get_index('[CLS]')
+        self.pad_id = vmap.get_index('[PAD]')
+        self.mask_id = vmap.get_index('[MASK]')
+
+        file_list = glob.glob(os.path.join(root_path, 'pkl', '*.pkl'))
+        self.access_method = []
+        for filename in file_list:
+            with open(filename, 'rb') as f:
+                data = pickle.load(f)
+
+            if random_pick:
+                self.access_method.append((filename, -1))
+            else:
+                self.access_method.extend([(filename, i) for i in range(len(data['bbs']))])
+
+    def __len__(self) -> int:
+        return len(self.access_method)
+
+    def __getitem__(self, index: int):
+        filename, bb_idx = self.access_method[index]
+        with open(filename, 'rb') as f:
+            data = pickle.load(f)
+
+        file_type = data['type']
+        file_type = torch.tensor(file_type).long()
+
+        bb = [self.vmap.get_index(inst) for inst in data['bbs'][bb_idx]]
+        if len(bb) >= self.seq_len + 3:
+            bb = bb[:3]
+
+        mlm_target = [self.cls_id] + bb + [self.sep_id] + [self.pad_id] * (self.seq_len - 3 - len(bb))
+        mlm_target = torch.tensor(mlm_target).long().contiguous()
+
+        def masking(data):
+            data = torch.tensor(data).long().contiguous()
+            data_len = data.size(0)
+            ones_num = int(data_len * self.mask_frac)
+            zeros_num = data_len - ones_num
+            lm_mask = torch.cat([torch.zeros(zeros_num), torch.ones(ones_num)])
+            lm_mask = lm_mask[torch.randperm(data_len)]
+            data = data.masked_fill(lm_mask.bool(), self.mask_id)
+
+            return data
+
+        mlm_train = torch.cat([
+            torch.tensor([self.cls_id]),
+            masking(bb),
+            torch.tensor([self.sep_id]),
+            torch.tensor([self.pad_id] * (self.seq_len - 3 - len(bb)))
+        ]).long().contiguous()
+
+        return mlm_train, mlm_target, file_type
+
+
 if __name__ == '__main__':
     imap = InstructionMapping()
-    dataset = MalwareDataset('data', imap)
+    vmap = Vocabulary(imap)
+    dataset = BBERTDataset('data', vmap)
 
     print(len(dataset))
     print(dataset[0])
