@@ -18,4 +18,4 @@ class BBERT(nn.Module):
     def forward(self, x: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
         x = self.bert(x)
 
-        return self.mlm(x), self.malware_classifier(x)
+        return self.mlm(x), self.malware_classifier(x[:, 0])

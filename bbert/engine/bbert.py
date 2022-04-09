@@ -25,10 +25,10 @@ class BBERTModule(pl.LightningModule):
 
     @property
     def train_dataset(self) -> Dataset:
-        return BBERTDataset('data', self.vmap, random_pick=True)
+        return BBERTDataset('/data/pbl/data', self.vmap, random_pick=False)
 
     def train_dataloader(self) -> DataLoader:
-        return DataLoader(self.train_dataset, 64, True, num_workers=4, pin_memory=True)
+        return DataLoader(self.train_dataset, 128, True, num_workers=4, pin_memory=True)
 
     def on_train_epoch_start(self):
         self.train_acc = 0
@@ -38,7 +38,7 @@ class BBERTModule(pl.LightningModule):
 
         pred_mlm, pred_file_type = self.model(mlm_train)
 
-        loss_mlm = F.cross_entropy(pred_mlm.transpose((1, 2)), mlm_target, ignore_index=self.pad_id)
+        loss_mlm = F.cross_entropy(pred_mlm.transpose(1, 2), mlm_target, ignore_index=self.pad_id)
         loss_file_type = F.cross_entropy(pred_file_type, file_type)
         
         loss = loss_mlm + loss_file_type
