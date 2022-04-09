@@ -145,6 +145,8 @@ class BERT(nn.Module):
     def __init__(self, vmap: Vocabulary, hidden: int=768, n_layers: int=12, attn_heads: int=12, dropout: float=0.1):
         super(BERT, self).__init__()
 
+        self.hidden = hidden
+
         self.pad_id = vmap.get_index('[PAD]')
 
         self.embedding = BERTEmbedding(vmap)
