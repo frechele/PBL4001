@@ -46,23 +46,27 @@ class BBERTDataset(Dataset):
         self.mask_id = vmap.get_index('[MASK]')
 
         file_list = glob.glob(os.path.join(root_path, 'pkl', '*.pkl'))
+
+        self.cache = dict()
         self.access_method = []
         for filename in file_list:
-            if random_pick:
-                self.access_method.append((filename, -1))
-            else:
-                with open(filename, 'rb') as f:
-                    data = pickle.load(f)
+            with open(filename, 'rb') as f:
+                data = pickle.load(f)
 
+            if random_pick:
+                for _ in range(10):
+                    self.access_method.append((filename, -1))
+            else:
                 self.access_method.extend([(filename, i) for i in range(len(data['bbs']))])
+                
+            self.cache[filename] = data
 
     def __len__(self) -> int:
         return len(self.access_method)
 
     def __getitem__(self, index: int):
         filename, bb_idx = self.access_method[index]
-        with open(filename, 'rb') as f:
-            data = pickle.load(f)
+        data = self.cache[filename]
 
         if bb_idx < 0:
             bb_idx = random.randint(0, len(data['bbs']) - 1)
@@ -71,8 +75,8 @@ class BBERTDataset(Dataset):
         file_type = torch.tensor(file_type).long()
 
         bb = [self.vmap.get_index(inst) for inst in data['bbs'][bb_idx]]
-        if len(bb) >= self.seq_len + 3:
-            bb = bb[:3]
+        if len(bb) >= self.seq_len - 2:
+            bb = bb[:self.seq_len - 2]
 
         mlm_target = [self.cls_id] + bb + [self.sep_id] + [self.pad_id] * (self.seq_len - 2 - len(bb))
         mlm_target = torch.tensor(mlm_target).long().contiguous()
