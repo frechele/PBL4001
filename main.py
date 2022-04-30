@@ -12,7 +12,7 @@ if __name__ == '__main__':
 
     model_callback = plc.ModelCheckpoint()
 
-    wandb_logger = WandbLogger(project='bbert', log_model='all')
+    wandb_logger = WandbLogger(project='pbl4001', log_model='all')
     wandb_logger.watch(model)
 
     trainer = pl.Trainer(gpus=1, precision=32, callbacks=[model_callback], max_epochs=10, logger=wandb_logger)
