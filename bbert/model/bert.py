@@ -164,3 +164,26 @@ class BERT(nn.Module):
             x = block(x, mask)
 
         return x
+
+
+class ALBERT(nn.Module):
+    def __init__(self, vmap: Vocabulary, hidden: int=768, n_layers: int=12, attn_heads: int=12, dropout: float=0.1):
+        super(ALBERT, self).__init__()
+
+        self.hidden = hidden
+        self.n_layers = n_layers
+
+        self.pad_id = vmap.get_index('[PAD]')
+
+        self.embedding = BERTEmbedding(vmap, embed_size=hidden)
+        self.transformer_block = TransformerBlock(hidden, attn_heads, hidden * 4, dropout)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        mask = (x != self.pad_id).unsqueeze(1).repeat(1, x.size(1), 1).unsqueeze(1)
+
+        x = self.embedding(x)
+
+        for _ in range(self.n_layers):
+            x = self.transformer_block(x, mask)
+
+        return x
