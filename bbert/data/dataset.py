@@ -47,19 +47,23 @@ class BBERTDataset(Dataset):
 
         file_list = glob.glob(os.path.join(root_path, 'pkl', '*.pkl'))
 
-        self.cache = dict()
-        self.access_method = []
-        for filename in file_list:
-            with open(filename, 'rb') as f:
-                data = pickle.load(f)
+        if os.path.exists('bbert_dataset_cache.pkl'):
+            with open('bbert_dataset_cache.pkl', 'rb') as f:
+                self.cache, self.access_method = pickle.load(f)
+        else:
+            self.cache = dict()
+            self.access_method = []
+            for filename in file_list:
+                with open(filename, 'rb') as f:
+                    data = pickle.load(f)
 
-            if random_pick:
-                for _ in range(10):
-                    self.access_method.append((filename, -1))
-            else:
-                self.access_method.extend([(filename, i) for i in range(len(data['bbs']))])
-                
-            self.cache[filename] = data
+                if random_pick:
+                    for _ in range(10):
+                        self.access_method.append((filename, -1))
+                else:
+                    self.access_method.extend([(filename, i) for i in range(len(data['bbs']))])
+                    
+                self.cache[filename] = data
 
     def __len__(self) -> int:
         return len(self.access_method)
