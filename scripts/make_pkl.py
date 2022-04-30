@@ -38,7 +38,13 @@ JUMP_INSTS = {
     'jnp',
     'jpo',
     'jcxz',
-    'jecxz'
+    'jecxz',
+    'call',
+    'ret',
+    'retf',
+    'retfw',
+    'retn',
+    'retnw'
 }
 
 def convert_one(filename: str):
@@ -51,16 +57,18 @@ def convert_one(filename: str):
     bb = []
 
     with open(filename, 'rt') as f:
-        for line in f.readlines():
+        lines = f.readlines()
+
+        if len(lines) <= 100:
+            return # just skip null or wrong file
+
+        for line in lines:
             line = line.lower().strip()
 
             bb.append(line)
             if line in JUMP_INSTS:
                 bbs.append(bb)
                 bb = []
-
-    if len(bbs) <= 100:
-        return # just skip null or wrong file
 
     with open(os.path.join('data/pkl/{}.pkl'.format(basename)), 'wb') as f:
         data = {
@@ -84,12 +92,12 @@ def task(rank: int, file_list):
 if __name__ == '__main__':
     file_list = glob('./data/*/*.txt')
 
-    NUM_PROCS = 10
+    NUM_PROCS = 28
 
     procs = []
     length = int(np.ceil(len(file_list) / NUM_PROCS))
     for rank in range(NUM_PROCS):
-        list_per_worker = copy.deepcopy(file_list[rank + length:(rank + 1) * length])
+        list_per_worker = copy.deepcopy(file_list[rank * length:(rank + 1) * length])
         proc = mp.Process(target=task, args=(rank, list_per_worker))
         procs.append(proc)
         proc.start()
