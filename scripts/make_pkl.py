@@ -70,6 +70,9 @@ def convert_one(filename: str):
                 bbs.append(bb)
                 bb = []
 
+    if len(bb) > 0:
+        bbs.append(bb)
+
     with open(os.path.join('data/pkl/{}.pkl'.format(basename)), 'wb') as f:
         data = {
             'type': file_type,
