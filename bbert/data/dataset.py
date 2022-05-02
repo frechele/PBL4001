@@ -58,7 +58,7 @@ class BBERTDataset(Dataset):
                     data = pickle.load(f)
 
                 if random_pick:
-                    for _ in range(10):
+                    for _ in range(int(len(data['bbs']) * 0.7)):
                         self.access_method.append((filename, -1))
                 else:
                     self.access_method.extend([(filename, i) for i in range(len(data['bbs']))])
