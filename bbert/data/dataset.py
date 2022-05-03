@@ -65,6 +65,9 @@ class BBERTDataset(Dataset):
                     
                 self.cache[filename] = data
 
+            with open('bbert_dataset_cache.pkl', 'wb') as f:
+                pickle.dump([self.cache, self.access_method], f)
+
     def __len__(self) -> int:
         return len(self.access_method)
 
