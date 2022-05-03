@@ -26,7 +26,7 @@ class BBERTModule(pl.LightningModule):
 
     @property
     def train_dataset(self) -> Dataset:
-        return BBERTDataset('/data/pbl/data', self.vmap, random_pick=False)
+        return BBERTDataset('/data/pbl/data', self.vmap, random_pick=True)
 
     def train_dataloader(self) -> DataLoader:
         return DataLoader(self.train_dataset, 256, True, num_workers=4, pin_memory=True)
