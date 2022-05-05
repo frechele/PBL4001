@@ -58,20 +58,23 @@ def main():
 
     inst_buffer = []
     for filename, file_type, bb, done in dataloader(file_list, vmap):
-        bb = bb.unsqueeze(0).cuda()
-        bb = model(bb)
-        bb = bb.cpu().numpy()
-        inst_buffer.append(bb)
+        try:
+            bb = bb.unsqueeze(0).cuda()
+            bb = model(bb)
+            bb = bb.cpu().numpy()
+            inst_buffer.append(bb)
 
-        if done:
-            with open('data/pkl2/{}'.format(os.path.basename(filename)), 'wb') as f:
-                pickle.dump({
-                    'type': file_type,
-                    'bbs': inst_buffer
-                }, f)
-            inst_buffer = []
+            if done:
+                with open('data/pkl2/{}'.format(os.path.basename(filename)), 'wb') as f:
+                    pickle.dump({
+                        'type': file_type,
+                        'bbs': inst_buffer
+                    }, f)
+                inst_buffer = []
 
-            print('{} ETA: {} seconds'.format(filename, eta()), flush=True)
+                print('{} ETA: {} seconds'.format(filename, eta()), flush=True)
+        except:
+            print('{} ERROR'.format(filename))
 
 
 if __name__ == '__main__':
