@@ -50,10 +50,11 @@ def main():
     vmap = Vocabulary(imap)
 
     model = BBERT(vmap).cuda()
+    model.load_state_dict(torch.load('bbert.pth'))
     model = model.bert
     model.eval()
 
-    file_list = glob.glob('data/pkl/*.pkl')
+    file_list = list(set(glob.glob('/data/pbl/data/pkl/*.pkl')).difference(glob.glob('/data/pbl/data/pkl2/*.pkl')))
     eta = ETA(len(file_list))
 
     inst_buffer = []
@@ -61,11 +62,11 @@ def main():
         try:
             bb = bb.unsqueeze(0).cuda()
             bb = model(bb)
-            bb = bb.cpu().numpy()
+            bb = bb.cpu().numpy()[0, 0, :]
             inst_buffer.append(bb)
 
             if done:
-                with open('data/pkl2/{}'.format(os.path.basename(filename)), 'wb') as f:
+                with open('/data/pbl/data/pkl2/{}'.format(os.path.basename(filename)), 'wb') as f:
                     pickle.dump({
                         'type': file_type,
                         'bbs': inst_buffer
