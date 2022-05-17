@@ -46,9 +46,6 @@ def split_into_bbs(instructions: List[str]) -> List[List[str]]:
     bbs = []
     bb = []
 
-    if len(instructions) <= 100:
-        return None
-    
     for inst in instructions:
         bb.append(inst)
         if inst in JUMP_INSTS:
