@@ -136,3 +136,4 @@ data/*/*.txt
 *.pth
 *.ipynb
 *.out
+*.npy
