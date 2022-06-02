@@ -7,10 +7,24 @@ import glob
 from scipy.stats import norm
 from sklearn.svm import SVC
 from sklearn.metrics import f1_score
+import random
+import tqdm
 
 
-DATASET_PATH = '/data/pbl/data/pkl2'
-DATA_LIST = glob.glob(os.path.join(DATASET_PATH, '*.pkl'))
+################################
+# Configurations               #
+################################
+BIG_BANK = 100
+N_BANK = 50
+SAMPLE_SIZE = 200
+TOTAL_ITER = 100
+################################
+# Configurations               #
+################################
+
+DATASET_PATH = '/data/pbl/data/pkl3'
+NORMAL_LIST = glob.glob(os.path.join(DATASET_PATH, '0', '*.pkl'))
+MALWARE_LIST = glob.glob(os.path.join(DATASET_PATH, '1', '*.pkl'))
 
 Seed = namedtuple('Seed', ['mu', 'std'])
 
@@ -47,27 +61,26 @@ def get_program_encoding(filename: str, seed: Seed):
     total_length = len(data['bbs'])
     if total_length > 1:
         idxs = np.arange(total_length) / (total_length - 1)
+
+        weights = gaussian(idxs, seed)
+        weight_sum = np.sum(weights)
+        bb = np.array(data['bbs'])
+        pe = np.sum(bb * weights[..., np.newaxis], axis=0)
+        pe = pe / weight_sum
     else:
-        idxs = np.array([1.])
-
-    weights = gaussian(idxs, seed)
-    weight_sum = np.sum(weights)
-    bb = np.array(data['bbs'])
-    pe = np.sum(bb * weights[..., np.newaxis], axis=0)
+        pe = np.array(data['bbs'])
     
-    return filetype, pe / weight_sum
-
-
-BIG_BANK = 100
-N_BANK = 50
+    return filetype, pe
 
 
 @ray.remote
 def calc_score(seed: Seed):
-    bb_types = np.zeros(len(DATA_LIST))
-    bbs = np.zeros((len(DATA_LIST), 768))
+    samples = random.sample(NORMAL_LIST, SAMPLE_SIZE//2) + random.sample(MALWARE_LIST, SAMPLE_SIZE//2)
 
-    for i, filename in enumerate(DATA_LIST):
+    bb_types = np.zeros(SAMPLE_SIZE)
+    bbs = np.zeros((SAMPLE_SIZE, 768))
+
+    for i, filename in enumerate(samples):
         filetype, pe = get_program_encoding(filename, seed)
 
         bb_types[i] = filetype
@@ -87,19 +100,59 @@ def distribute(seeds: list):
     return ray.get(futures)
 
 
+def print_top5_bank(bank):
+    for i, (seed, score) in enumerate(bank[:5], 1):
+        print('top{}'.format(i), seed, score)
+
+
 if __name__ == '__main__':
     ray.init(num_cpus=28, dashboard_port=40000, dashboard_host='0.0.0.0')
 
-    print('build the first bank', end=' ')
-    big_bank = []
-    for _ in range(BIG_BANK):
-        mu = np.random.random()
-        std = np.random.random()
-        big_bank.append(Seed(mu, std))
+    if not os.path.exists('firstbank.pkl'):
+        print('build the first bank', end=' ')
+        big_bank = []
+        for _ in range(BIG_BANK):
+            mu = np.random.random()
+            std = np.random.random()
+            big_bank.append(Seed(mu, std))
 
-    bank = distribute(big_bank)
-    bank = sorted(bank, key=lambda x: x[1], reverse=True)
-    bank = bank[:N_BANK]
-    print('DONE')
+        bank = distribute(big_bank)
+        bank = sorted(bank, key=lambda x: x[1], reverse=True)
+        bank = bank[:N_BANK]
+        print('DONE')
+
+        with open('firstbank.pkl', 'wb') as f:
+            pickle.dump(bank, f)
+    else:
+        print('load first bank checkpoint')
+        with open('firstbank.pkl', 'rb') as f:
+            bank = pickle.load(f)
+
+    print()
+    print('<first bank checkpoint>')
+    print_top5_bank(bank)
+
+    for it in range(TOTAL_ITER):
+        print(f'iteration {it}/{TOTAL_ITER}', flush=True)
+
+        bank_candidates = []
+        for _ in range(BIG_BANK - N_BANK):
+            if np.random.random() < 0.5:
+                seed1, seed2 = map(lambda x: x[0], random.sample(bank, 2))
+                bank_candidates.append(crossover(seed1, seed2))
+            else:
+                seed = random.choice(bank)[0]
+                bank_candidates.append(mutation(seed))
+
+        bank += distribute(bank_candidates)
+        bank = sorted(bank, key=lambda x: x[1], reverse=True)
+        bank = bank[:N_BANK]
+
+        print('checkpoint')
+        print_top5_bank(bank)
+        print(flush=True)
+
+        with open(f'iteration{it:04d}.pkl', 'wb') as f:
+            pickle.dump(bank, f)
 
     ray.shutdown()
