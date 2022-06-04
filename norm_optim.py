@@ -15,8 +15,8 @@ import tqdm
 # Configurations               #
 ################################
 BIG_BANK = 100
-N_BANK = 50
-SAMPLE_SIZE = 200
+N_BANK = 30
+SAMPLE_SIZE = 1000
 TOTAL_ITER = 100
 ################################
 # Configurations               #
@@ -44,7 +44,7 @@ def mutation(seed: Seed) -> Seed:
     w2 = np.random.uniform(-1, 1) * 0.01
 
     new_mu = np.clip(seed.mu + w1, 0, 1)
-    new_std = np.clip(seed.std + w2, 0, 1)
+    new_std = np.clip(seed.std + w2, 0.01, 1)
     
     return Seed(mu=new_mu, std=new_std)
 
@@ -65,10 +65,14 @@ def get_program_encoding(filename: str, seed: Seed):
         weights = gaussian(idxs, seed)
         weight_sum = np.sum(weights)
         bb = np.array(data['bbs'])
-        pe = np.sum(bb * weights[..., np.newaxis], axis=0)
-        pe = pe / weight_sum
+
+        if weight_sum < 1e-5:
+            pe = np.sum(np.array(data['bbs']), axis=0)
+        else:
+            pe = np.sum(bb * weights[..., np.newaxis], axis=0)
+            pe = pe / weight_sum
     else:
-        pe = np.array(data['bbs'])
+        pe = np.sum(np.array(data['bbs']), axis=0)
     
     return filetype, pe
 
@@ -79,14 +83,13 @@ def calc_score(seed: Seed):
 
     bb_types = np.zeros(SAMPLE_SIZE)
     bbs = np.zeros((SAMPLE_SIZE, 768))
-
     for i, filename in enumerate(samples):
         filetype, pe = get_program_encoding(filename, seed)
 
         bb_types[i] = filetype
         bbs[i] = pe
 
-    model = SVC(kernel='linear').fit(bbs, bb_types)
+    model = SVC(kernel='linear', max_iter=20000).fit(bbs, bb_types)
     preds = model.predict(bbs)
 
     return seed, f1_score(bb_types, preds)
@@ -109,7 +112,7 @@ if __name__ == '__main__':
     ray.init(num_cpus=28, dashboard_port=40000, dashboard_host='0.0.0.0')
 
     if not os.path.exists('firstbank.pkl'):
-        print('build the first bank', end=' ')
+        print('build the first bank', end=' ', flush=True)
         big_bank = []
         for _ in range(BIG_BANK):
             mu = np.random.random()
@@ -131,6 +134,7 @@ if __name__ == '__main__':
     print()
     print('<first bank checkpoint>')
     print_top5_bank(bank)
+    print(flush=True)
 
     for it in range(TOTAL_ITER):
         print(f'iteration {it}/{TOTAL_ITER}', flush=True)
