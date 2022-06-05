@@ -2,6 +2,12 @@ import numpy as np
 from typing import List
 from scipy.stats import norm
 
+import torch
+import os
+import pickle
+
+MU = 0.5
+SIGMA = 1
 
 class BBLModel:
     def __init__(self, ckpt_filename: str):
@@ -23,3 +29,26 @@ class BBLModel:
         mean_score = 2 * (1 - norm.cdf(np.abs(mean_z)))
 
         return 1 - (std_score ** 0.44404637) * (mean_score ** 0.33140396)
+
+class BBWModel:
+    def __init__(self, ckpt_filename: str):
+        if ckpt_filename != "":
+            ckpt = np.load(ckpt_filename)
+            self.mu, self.sigma = ckpt
+        else :
+            self.mu = MU
+            self.sigma = SIGMA
+
+    def calc_score(self, bbs: List[np.array]):
+        bbs_length = len(bbs)
+        sum = 0
+        weight_list = []
+        for idx, bb in enumerate(bbs):
+            n = idx/bbs_length
+            weight =norm.pdf(n-self.mu, self.mu, self.sigma)
+            weight_list.append(weight)
+            sum += weight
+        
+        ret = np.array(weight_list) * np.array(bbs) / sum
+        return ret
+        
