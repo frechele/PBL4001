@@ -34,13 +34,14 @@ class BBLModel:
         return 1 - (std_score ** 0.44404637) * (mean_score ** 0.33140396)
 
 class BBWModel:
-    def __init__(self, saved_predict_model_filename:str):
+    def __init__(self, bbert_filename:str = 'bbert.pth' , pdmd_filename:str = 'pdmd.pkl'):
+        self.predict_model = pickle.loads(pdmd_filename)
         
-        self.predict_model = pickle.loads(saved_predict_model_filename)
         self.imap = InstructionMapping()
         self.vmap = Vocabulary(self.imap)
+        
         self.model = BBERT(self.vmap).cuda()
-        self.model.load_state_dict(torch.load('bbert.pth'))
+        self.model.load_state_dict(torch.load(bbert_filename))
         self.model = self.model.bert
         self.model.eval()
 
@@ -48,19 +49,12 @@ class BBWModel:
         self.cls_id = self.vmap.get_index('[CLS]')
 
     def _get_weights(self ,bbs_length):
-        if bbs_length > 1:
-            idxs = np.arange(bbs_length) / (bbs_length - 1)
-        else:
-            idxs = np.array([1.])
-
-        # weights = norm.pdf(idxs, self.mu, self.sigma)
         weights = np.ones((bbs_length))
         weights_sum = np.sum(weights)
         
         return weights, weights_sum
 
     def calc_score(self, bbs: List[str]):
-
         bert_bbs = []
 
         for idx, bb in enumerate(bbs):
@@ -78,6 +72,6 @@ class BBWModel:
 
         total_length = len(bert_bbs)
         weights, weights_sum = self._get_weights(total_length)
-
         weighted_bbs = weights * np.array(bert_bbs) / weights_sum
-        return self.predict_model.predict(weighted_bbs.tolist())
+
+        return self.predict_model.predict(weighted_bbs)
