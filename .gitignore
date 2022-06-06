@@ -131,3 +131,9 @@ dmypy.json
 # Dataset
 data/*/*.txt
 *.pkl
+
+# experiment files
+*.pth
+*.ipynb
+*.out
+*.npy
