@@ -13,7 +13,7 @@ from bbert.utils.bb_splitter import split_into_bbs
 class Inference:
     def __init__(self):
         self.bbl = BBLModel('bb_stat.npy')
-        self.bbw = BBWModel('')
+        self.bbw = BBWModel('saved_predict_model.pkl')
 
     def analyze(self, bbs):
         bbl_score = self.bbl.calc_score(bbs)

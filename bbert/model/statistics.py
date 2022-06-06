@@ -12,12 +12,6 @@ from bbert.data.instruction import Vocabulary, InstructionMapping
 from bbert.data.dataset import MalwareDataset
 from bbert.model.bbert import BBERT
 
-DATASET_PATH = '/data/pbl/data/pkl2'
-DATA_LIST = glob.glob(os.path.join(DATASET_PATH, '*.pkl'))
-
-MU = 0.5
-SIGMA = 1
-
 class BBLModel:
     def __init__(self, ckpt_filename: str):
         ckpt = np.load(ckpt_filename)
@@ -40,14 +34,18 @@ class BBLModel:
         return 1 - (std_score ** 0.44404637) * (mean_score ** 0.33140396)
 
 class BBWModel:
-    def __init__(self, ckpt_filename: str):
-        if ckpt_filename != "":
-            ckpt = np.load(ckpt_filename)
-            self.mu, self.sigma = ckpt
-        else :
-            self.mu = MU
-            self.sigma = SIGMA
-        self.predict_model = self.bulid_predict_model()
+    def __init__(self, saved_predict_model_filename:str):
+        
+        self.predict_model = pickle.loads(saved_predict_model_filename)
+        self.imap = InstructionMapping()
+        self.vmap = Vocabulary(self.imap)
+        self.model = BBERT(self.vmap).cuda()
+        self.model.load_state_dict(torch.load('bbert.pth'))
+        self.model = self.model.bert
+        self.model.eval()
+
+        self.sep_id = self.vmap.get_index('[SEP]')
+        self.cls_id = self.vmap.get_index('[CLS]')
 
     def _get_weights(self ,bbs_length):
         if bbs_length > 1:
@@ -59,63 +57,27 @@ class BBWModel:
         weights = np.ones((bbs_length))
         weights_sum = np.sum(weights)
         
-        return weights , weights_sum
+        return weights, weights_sum
 
     def calc_score(self, bbs: List[str]):
-
-        imap = InstructionMapping()
-        vmap = Vocabulary(imap)
-
-        model = BBERT(vmap).cuda()
-        model.load_state_dict(torch.load('bbert.pth'))
-        model = model.bert
-        model.eval()
-
-        sep_id = vmap.get_index('[SEP]')
-        cls_id = vmap.get_index('[CLS]')
 
         bert_bbs = []
 
         for idx, bb in enumerate(bbs):
-            bb = [vmap.get_index(inst) for inst in bb]
+            bb = [self.vmap.get_index(inst) for inst in bb]
             bb = torch.cat([
-                torch.tensor([cls_id]),
+                torch.tensor([self.cls_id]),
                 torch.tensor(bb).long().contiguous(),
-                torch.tensor([sep_id])
+                torch.tensor([self.sep_id])
             ]).long().contiguous()
 
             bb = bb.unsqueeze(0).cuda()
-            bb = model(bb)
+            bb = self.model(bb)
             bb = bb.cpu().numpy()[0, 0, :]
             bert_bbs.append(bb)
 
         total_length = len(bert_bbs)
-        weights , weights_sum = self._get_weights(total_length)
+        weights, weights_sum = self._get_weights(total_length)
 
         weighted_bbs = weights * np.array(bert_bbs) / weights_sum
         return self.predict_model.predict(weighted_bbs.tolist())
-    
-    def bulid_predict_model(self):
-        bb_types = np.zeros(len(DATA_LIST))
-        bbs = np.zeros((len(DATA_LIST), 768))
-
-        for i, filename in enumerate(DATA_LIST):
-            filetype, pe = self.get_program_encoding(filename)
-
-            bb_types[i] = filetype
-            bbs[i] = pe
-
-        return SVC(kernel='linear').fit(bbs, bb_types)
-
-    def get_program_encoding(self, filename: str):
-        with open(filename, 'rb') as f:
-            data = pickle.load(f)
-
-        filetype = data['type']
-        total_length = len(data['bbs'])
-
-        weights, weights_sum = self._get_weights(total_length)
-        bb = np.array(data['bbs'])
-        pe = np.sum(bb * weights[..., np.newaxis], axis=0)
-
-        return filetype, pe / weights_sum
