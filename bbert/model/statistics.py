@@ -34,7 +34,7 @@ class BBLModel:
         return 1 - (std_score ** 0.44404637) * (mean_score ** 0.33140396)
 
 class BBWModel:
-    def __init__(self, bbert_filename: str='bbert.pth', pdmd_filename: str='pdmd.pkl'):
+    def __init__(self, bbert_filename: str, pdmd_filename: str):
         self.predict_model = pickle.loads(pdmd_filename)
         
         self.imap = InstructionMapping()
