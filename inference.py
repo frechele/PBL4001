@@ -17,10 +17,10 @@ class Inference:
 
     def analyze(self, bbs):
         bbl_score = self.bbl.calc_score(bbs)
-        logging.info("BBL score: {}".format(bbl_score))
+        logging.info('BBL score: {}'.format(bbl_score))
 
         predict_filetype = self.bbw.calc_score(bbs)
-        logging.info("BBW predict filetype is {}".format(predict_filetype))
+        logging.info('BBW predict filetype is {}'.format(predict_filetype))
 
 
 def run_one_file(target_filename, inference: Inference):

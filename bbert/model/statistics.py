@@ -34,7 +34,7 @@ class BBLModel:
         return 1 - (std_score ** 0.44404637) * (mean_score ** 0.33140396)
 
 class BBWModel:
-    def __init__(self, bbert_filename:str = 'bbert.pth' , pdmd_filename:str = 'pdmd.pkl'):
+    def __init__(self, bbert_filename: str='bbert.pth', pdmd_filename: str='pdmd.pkl'):
         self.predict_model = pickle.loads(pdmd_filename)
         
         self.imap = InstructionMapping()
@@ -48,7 +48,7 @@ class BBWModel:
         self.sep_id = self.vmap.get_index('[SEP]')
         self.cls_id = self.vmap.get_index('[CLS]')
 
-    def _get_weights(self ,bbs_length):
+    def _get_weights(self, bbs_length):
         weights = np.ones((bbs_length))
         weights_sum = np.sum(weights)
         
